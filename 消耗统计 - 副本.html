@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>绝命剪辑师消耗统计</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"></script>
+</head>
+
+<style>
+  body {
+    text-align: center;
+  }
+
+  form {
+    display: inline-block;
+    text-align: left;
+  }
+
+  label {
+    display: block;
+    margin-bottom: 10px;
+  }
+
+  label.form-check-label {
+    font-size: 30px;
+  }
+
+  hr {
+    border: none;
+    height: 3px;
+    background-color: #333;
+    margin: 20px 0;
+    margin-top: -10px;
+    margin-bottom: -20px;
+  }
+
+  h1 {
+    font-size: 100px;
+    color: rgb(255, 198, 9);
+
+  }
+
+  h3 {
+    font-size: 20px;
+  }
+
+  #total {
+    color: rgb(57, 0, 214);
+    font-size: 50px;
+    text-align: center;
+    background-color: rgb(212, 212, 212);
+    border-radius: 50px;
+    padding: 10px;
+    color: rgb(75, 75, 75);
+  }
+
+  p#total {
+    text-align: center;
+  }
+
+  #count,
+  #rowCount {
+    font-size: 1.2em;
+  }
+</style>
+
+<body class="container">
+  <div style="height: 20px;"></div>
+  <div class="jumbotron bg-dark text-white p-4 d-flex justify-content-center align-items-center"
+    style="border-radius: 20px;">
+    <div class="d-flex align-items-center">
+      <i class="bi bi-file-spreadsheet me-3 text-light" style="font-size: 5rem;"></i>
+      <h1 class="text-center m-0">绝命剪辑师消耗统计</h1>
+    </div>
+    <i class="bi bi-emoji-expressionless text-light" style="font-size: 5rem; margin-left: 15px;"></i>
+  </div>
+
+
+  <h3 class="text-center" style="white-space: pre-wrap; margin-top: -10px;">
+    <span style="color: red">*</span>视频文件命名你们的名字不要有错别字<span style="color: red">*</span>
+    你们保持之前的命名格式就行
+    不要乱命名
+    不然无法匹配出来
+    会导致消耗少算
+  </h3>
+
+
+  <hr>
+  <form class="my-5">
+
+    <div class="mb-3 text-center">
+      <label class="btn btn-success p-2 mx-4" style="font-size: 30px; cursor: pointer; width: 200px;">
+        <input type="radio" name="option" value="许国鑫" class="form-check-input" disabled>
+        许国鑫
+      </label>
+      <label class="btn btn-warning p-2 mx-4" style="font-size: 30px; cursor: pointer; width: 200px;">
+        <input type="radio" name="option" value="翁劭纬" class="form-check-input" disabled>
+        翁劭纬
+      </label>
+      <label class="btn btn-primary p-2 mx-4" style="font-size: 30px; cursor: pointer; width: 200px;">
+        <input type="radio" name="option" value="陆锋" class="form-check-input" disabled>
+        陆 锋
+      </label>
+      <label class="btn btn-info p-2 mx-4" style="font-size: 30px; cursor: pointer; width: 200px;">
+        <input type="radio" name="option" value="黄祖铭" class="form-check-input" disabled>
+        黄祖铭
+      </label>
+    </div>
+
+    <div class="mb-3 text-center">
+      <label for="fileInput" class="form-label"
+        style="font-weight:bold; font-size:30px;">请选择要上传的Excel表格[单选/多选]</label>
+      <input multiple type="file" id="fileInput"
+        accept=".xlsx, .xls, application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        class="form-control">
+      <p id="total" style="margin-top: 30px;"></p>
+      <div id="progress-bar-container" class="progress mt-3" style="height: 30px;">
+        <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar"
+          aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%">
+          <span id="progress-text">0%</span>
+        </div>
+      </div>
+    </div>
+  </form>
+  <hr>
+
+  <div class="text-center mt-5">
+    <p id="count"></p>
+    <p id="rowCount"></p>
+    <p id="duplicateCount" style="font-size: 20px;"></p>
+  </div>
+
+  <script>
+
+    function handleFileSelect(event) {
+      const files = event.target.files;
+      const optionElement = document.querySelector('input[name="option"]:checked');
+
+      if (files.length === 0) {
+        for (let i = 0; i < options.length; i++) {
+          options[i].disabled = true;
+        }
+        return;
+      }
+
+
+      for (let i = 0; i < options.length; i++) {
+        options[i].disabled = false;
+      }
+      const option = optionElement ? optionElement.value : null;
+      let rowCount = 0;
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const reader = new FileReader();
+        reader.onload = function (event) {
+          const data = event.target.result;
+          const workbook = XLSX.read(data, { type: 'binary' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const range = XLSX.utils.decode_range(worksheet['!ref']);
+          let sheetRowCount = range.e.r;
+          for (let R = 1; R <= range.e.r; ++R) {
+            const cellRef = XLSX.utils.encode_cell({ c: 0, r: R });
+            if (!worksheet[cellRef]) {
+              sheetRowCount = R - 1;
+              break;
+            }
+          }
+          rowCount += sheetRowCount;
+          if (i === files.length - 1) {
+            document.getElementById('rowCount').textContent = `已选择的表格中共有 ${rowCount} 条数据`;
+          }
+        }
+        reader.readAsBinaryString(file);
+      }
+    }
+
+    function handleOptionChange() {
+      const rowCountElement = document.getElementById('rowCount');
+      const rowCount = rowCountElement.textContent.match(/\d+/)[0];
+      rowCountElement.textContent = `已选择的表格中共有 ${rowCount} 条数据`;
+    }
+
+    function handleOptionClick() {
+      const option = this.value;
+
+      const files = document.getElementById('fileInput').files;
+      let processedFileCount = 0;
+      let total = 0;
+      let count = 0;
+      let duplicateCount = 0;
+      const processedData = {};
+
+      const progressBarContainer = document.getElementById('progress-bar-container');
+      progressBarContainer.style.display = 'block';
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const reader = new FileReader();
+        reader.onload = (function (file) {
+          return function (event) {
+            const data = event.target.result;
+            const workbook = XLSX.read(data, { type: 'binary' });
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            const range = XLSX.utils.decode_range(worksheet['!ref']);
+            let nameColumnIndex = -1;
+            let valueColumnIndex = -1;
+            for (let C = range.s.c; C <= range.e.c; ++C) {
+              const cellRef = XLSX.utils.encode_cell({ c: C, r: 0 });
+              const cellValue = worksheet[cellRef] ? worksheet[cellRef].v : '';
+              if (cellValue === '文件名') {
+                nameColumnIndex = C;
+              } else if (cellValue === '消耗') {
+                valueColumnIndex = C;
+              }
+            }
+            if (nameColumnIndex === -1 || valueColumnIndex === -1) {
+              console.error('未找到文件名或消耗值所在的列');
+              return;
+            }
+            for (let R = 1; R <= range.e.r; ++R) {
+              const nameCellRef = XLSX.utils.encode_cell({ c: nameColumnIndex, r: R });
+              const valueCellRef = XLSX.utils.encode_cell({ c: valueColumnIndex, r: R });
+              const name = worksheet[nameCellRef] ? worksheet[nameCellRef].v : '';
+              let value = worksheet[valueCellRef] ? worksheet[valueCellRef].v : 0;
+              const key = `${name}${value}`;
+              if (!name.includes(option)) {
+                continue;
+              }
+              if (typeof value === 'string') {
+                value = parseFloat(value.replace(/,/g, ''));
+                if (isNaN(value)) {
+                  continue;
+                }
+              }
+              if (!processedData.hasOwnProperty(key)) {
+                processedData[key] = true;
+                total += value;
+                count++;
+              } else {
+                duplicateCount++;
+              }
+            }
+            processedFileCount++;
+
+
+            const percentComplete = Math.round(processedFileCount / files.length * 100);
+            const progressBar = document.getElementById('progress-bar');
+            progressBar.style.width = `${percentComplete}%`;
+            progressBar.setAttribute('aria-valuenow', percentComplete);
+            const progressText = document.getElementById('progress-text');
+            progressText.textContent = `${percentComplete}%`;
+
+            if (processedFileCount === files.length) {
+              const totalFixed = total.toFixed(2);
+              document.getElementById('total').textContent = `${option}的总消耗值为 ${totalFixed}`;
+              document.getElementById('count').textContent = `${option}的数据计数为： ${count} 条`;
+
+
+              progressBarContainer.style.display = 'none';
+
+              if (duplicateCount > 0) {
+                const duplicateCountElement = document.getElementById('duplicateCount');
+                duplicateCountElement.textContent = `已剔除 ${duplicateCount} 条重复数据。`;
+              }
+            }
+          };
+        })(file);
+        reader.readAsBinaryString(file);
+      }
+    }
+
+
+
+
+    const fileInput = document.getElementById('fileInput');
+    fileInput.addEventListener('change', handleFileSelect);
+    const options = document.querySelectorAll('input[name="option"]');
+    for (let i = 0; i < options.length; i++) {
+      options[i].addEventListener('change', handleOptionChange);
+      options[i].addEventListener('click', handleOptionClick);
+    }
+  </script>
+</body>
+
+</html>
